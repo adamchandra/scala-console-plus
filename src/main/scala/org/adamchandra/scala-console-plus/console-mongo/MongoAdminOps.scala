@@ -1,4 +1,5 @@
-package net.openreview.model.raw.casbah.admin
+package org.adamchandra.sconsplus
+package mongodb
 
 import scala.Predef._
 import scala.{Double, Some}
@@ -7,9 +8,6 @@ import org.joda.time.format.DateTimeFormat
 import org.bson.types.BasicBSONList
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.UUID
-import net.openreview.model.raw.Storage._
-import net.openreview.model.raw._
-import net.openreview.model.raw.casbah._
 import org.joda.time.DateTime
 import ch.qos.logback.classic.LoggerContext
 import org.slf4j.LoggerFactory
@@ -17,7 +15,6 @@ import ch.qos.logback.core.util.StatusPrinter
 import com.mongodb.casbah.Imports._
 import com.mongodb.casbah.MongoCollection
 
-import net.openreview.util.boxes.Boxes._
 
 import scalaz.syntax.id._
 import scalaz.syntax.monad._
@@ -32,9 +29,6 @@ import scalaz.std.option._
 import scalaz.std.list._
 
 import scalaz.{Validation, Success, Failure}, Validation._, scalaz.syntax.validation._
-import net.openreview.model.admin.{ScalaConsole, ReplReturnValue, ScalaILoop, IntegrityTest}
-import net.openreview.model.users.User
-import net.openreview.OpenreviewCoreServices
 
 /**
  * @author <a href="mailto:dev@davidsoergel.com">David Soergel</a>
@@ -46,12 +40,11 @@ trait MongoAdminOps extends Queries with Formatting with Logging {
     val lc:LoggerContext  =LoggerFactory.getILoggerFactory().asInstanceOf[LoggerContext]
     // StatusPrinter.print(lc)
     
-    // logger.info("[openreview] using MongoDB backend storage: %s".format(this.getClass))
-    println("[openreview] using MongoDB backend storage: %s".format(this.getClass))
+    println("[] using MongoDB backend storage: %s".format(this.getClass))
 
     com.mongodb.casbah.commons.conversions.scala.RegisterConversionHelpers()
     com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers()
-    net.openreview.model.mongodb.RegisterURLHelpers()
+    // TODO net.openreview.model.mongodb.RegisterURLHelpers()
 
     StorageSetter(new CasbahStorage(MongoConnection(host), dbname))
   }

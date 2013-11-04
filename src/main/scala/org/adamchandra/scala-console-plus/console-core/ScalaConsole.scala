@@ -1,4 +1,6 @@
-package net.openreview.model.admin
+package org.adamchandra.sconsplus
+package core
+
 
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.ConsoleReporter

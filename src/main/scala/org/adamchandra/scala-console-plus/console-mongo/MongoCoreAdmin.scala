@@ -1,4 +1,8 @@
-package net.openreview.model.raw.casbah.admin
+package org.adamchandra.sconsplus
+package mongodb
+
+import org.adamchandra.sconsplus.core._
+
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.ConsoleReporter
 import scala.tools.nsc.interpreter.{ ILoop, ReplReporter, Results }
@@ -9,9 +13,6 @@ import org.joda.time.format.DateTimeFormat
 import org.bson.types.BasicBSONList
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.UUID
-import net.openreview.model.raw.Storage._
-import net.openreview.model.raw._
-import net.openreview.model.raw.casbah._
 import org.joda.time.DateTime
 import ch.qos.logback.classic.LoggerContext
 import org.slf4j.LoggerFactory
@@ -19,7 +20,7 @@ import ch.qos.logback.core.util.StatusPrinter
 import com.mongodb.casbah.Imports._
 import com.mongodb.casbah.MongoCollection
 
-import net.openreview.util.boxes.Boxes._
+import org.adamchandra.boxter.Boxes._
 
 import scalaz.syntax.id._
 import scalaz.syntax.monad._
@@ -34,13 +35,8 @@ import scalaz.std.option._
 import scalaz.std.list._
 
 import scalaz.{Validation, Success, Failure}, Validation._, scalaz.syntax.validation._
-import net.openreview.model.admin.{ScalaConsole, ReplReturnValue, ScalaILoop, IntegrityTest}
-import net.openreview.model.users.User
-import net.openreview.OpenreviewCoreServices
 
-/**
- * @author <a href="mailto:dev@davidsoergel.com">David Soergel</a>
- */
+
 object MongoCoreAdmin extends MongoAdminOps {
   class DummyClass()
 
@@ -126,19 +122,14 @@ object MongoCoreAdmin extends MongoAdminOps {
       addThunk {
         intp.beQuietDuring {
           intp.addImports(
-            "net.openreview.model.admin._",
-            "net.openreview.model.raw._",
-            "net.openreview.model.raw.eventprocessors._",
-            "net.openreview.model.users._",
             "com.mongodb.casbah.Imports._",
-            "net.openreview.model.raw.casbah.admin.MongoCoreAdmin._",
             "scalaz.syntax.id._",
             "scalaz.syntax.monad._",
             "scalaz.std.function._",
             "scalaz.std.option._",
             "scalaz.syntax.std.option._"
           )
-          useDatabase(List("openreview-devdb"))
+          // useDatabase(List(""))
         }
       }
 
@@ -192,8 +183,6 @@ object MongoCoreAdmin extends MongoAdminOps {
 
 
     val settings = ScalaConsole.newSettings[DummyClass]
-    
-    OpenreviewCoreServices.startup()
     
     iLoop.process(settings)
   }

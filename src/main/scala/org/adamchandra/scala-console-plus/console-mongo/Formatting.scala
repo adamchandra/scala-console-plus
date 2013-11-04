@@ -1,15 +1,12 @@
-package net.openreview.model.raw.casbah.admin
+package org.adamchandra.sconsplus
+package mongodb
 
 import com.mongodb.casbah.Imports._
-import scala.Some
 import edu.umass.cs.iesl.scalacommons.NonemptyString
 import org.joda.time.format.DateTimeFormat
 import org.bson.types.BasicBSONList
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.UUID
-import net.openreview.model.raw.Storage._
-import net.openreview.model.raw._
-import net.openreview.model.raw.casbah._
 import org.joda.time.DateTime
 import ch.qos.logback.classic.LoggerContext
 import org.slf4j.LoggerFactory
@@ -17,7 +14,7 @@ import ch.qos.logback.core.util.StatusPrinter
 import com.mongodb.casbah.Imports._
 import com.mongodb.casbah.MongoCollection
 
-import net.openreview.util.boxes.Boxes._
+import org.adamchandra.boxter.Boxes._
 
 import scalaz.syntax.id._
 import scalaz.syntax.monad._
@@ -32,10 +29,6 @@ import scalaz.std.option._
 import scalaz.std.list._
 
 import scalaz.{Validation, Success, Failure}, Validation._, scalaz.syntax.validation._
-import net.openreview.model.admin.{ScalaConsole, ReplReturnValue, ScalaILoop, IntegrityTest}
-import net.openreview.model.users.User
-import net.openreview.OpenreviewCoreServices
-
 
 // record formatting varieties:
 sealed trait Format
@@ -91,35 +84,22 @@ trait Formatting extends Queries {
   // TODO: this can be made more generic than hard-coding the field names
   // TODO: if type=anonymizer, also print the subscriber (the one made anonymous)
   def iconic1Field(field:String)(implicit dbo: MongoDBObject): Box = {
-    field match {
-      case "creator"
-         | "eventProcessor"
-         | "authors"
-         | "subscriber"
-         | "cc"
-         | "target" => getEventProcessorBox(field) |> boxOrEmpty
+    
+    (for {
+      v <- dbo.get(field)
+    } yield {
+      if (v.isInstanceOf[UUID]) {
+        recordBox(v.asInstanceOf[UUID].findOne, FullDescription)
+      } else if (v.isInstanceOf[DateTime]) {
+        val fmt = DateTimeFormat.forPattern("EEE MMM d yyyy hh:mm:ss aa")
+        tbox(fmt.print(v.asInstanceOf[DateTime]))
+      } else if (v.isInstanceOf[String]) {
+        tbox(v.toString.oneLine.clip())
+      } else {
+        tbox(v.toString.oneLine.clip())
+      }
+    }) |> boxOrEmpty
 
-      case "doc" => getDocumentBox(field) |> boxOrEmpty
-
-      case "wrapped"  => getEventBox(field) |> boxOrEmpty
-
-      case "_history"  => tbox("_history: ...")
-
-      case _ => (for {
-        v <- dbo.get(field)
-      } yield {
-        if (v.isInstanceOf[UUID]) {
-          recordBox(v.asInstanceOf[UUID].findOne, FullDescription)
-        } else if (v.isInstanceOf[DateTime]) {
-          val fmt = DateTimeFormat.forPattern("EEE MMM d yyyy hh:mm:ss aa")
-          tbox(fmt.print(v.asInstanceOf[DateTime]))
-        } else if (v.isInstanceOf[String]) {
-          tbox(v.toString.oneLine.clip())
-        } else {
-          tbox(v.toString.oneLine.clip())
-        }
-      }) |> boxOrEmpty
-    }
   }
 
 
@@ -148,7 +128,7 @@ trait Formatting extends Queries {
 
         getAsUUID("_id").fold(
           valBox[String]("type"))(
-          _ => tbox(modelDescription) +| valBox[String]("type") +| memoizedIdBox)
+          _ => tbox(recordBox) +| valBox[String]("type") +| memoizedIdBox)
 
       case ShortDescription =>
         getAsUUID("_id").cata(
@@ -196,17 +176,6 @@ trait Formatting extends Queries {
         )
     }
   }
-
-  //def eventBox(implicit dbo: MongoDBObject, format: Format): Box = {
-  //  format match {
-  //    case Iconic1 =>
-  //      recordBox(dbo, Description) +| recordBox
-  //    case Description =>
-  //      modelDescription
-  //    case Summary  =>
-  //      recordBox(dbo, format)
-  //  }
-  //}
 
 
   def linkedAccountBox(implicit dbo: MongoDBObject, format: Format): Box = {
@@ -301,64 +270,10 @@ trait Formatting extends Queries {
 
   def docBox(implicit dbo: MongoDBObject, format: Format): Box = {
     recordBox
-    // TODO: put back response/revision chain (as generic list-formatting)
-//     val idbox = memoizedIdBox
-//     val docHeaderH = hjoin()(valBox[String]("type"), tbox("  "), idbox)
-//     val docHeaderV = vjoin(center1)(valBox[String]("type"), idbox)
-// 
-//     val summary = docHeaderH atop indent()(
-//       getCreatorBox atop (indent()(
-//         vjoin(center1)(
-//           tbox("in response to"),
-//           (responseChain())
-//         ) besideS (
-//           vjoin(center1)(
-//             tbox("revision of"),
-//             (revisionChain())
-//           )
-//         )
-//       ))
-//     )
-// 
-//     format match {
-//       case Iconic1 => idbox
-//       case Iconic2 => docHeaderV |> borderInlineTop
-//       case Summary => recordBox // summary
-//     }
-
   }
 
   def eventProcessorBox(implicit dbo: MongoDBObject, format: Format): Box = {
     recordBox
-    // TODO: put back subscribers (as generic list-formatting)
-    //    val idbox = memoizedIdBox
-    //
-    //    def userIcon(f: Format) = (getAsUUID("_id") >>= find(users) >>= (o => Some(userBox(o, f)))) |> boxOrMessage("(no user)")
-    //
-    //    def subscribers(f: BoxerFn): List[Box] = (for {
-    //      duuid <- getTraversable[UUID]("subscribers")
-    //      dobj <- eventprocessors.find(withUUID(duuid))
-    //    } yield f(dobj)).toList
-    //
-    //
-    //    def subscribersBox = vjoin(left)(tbox("subscribers"), vjoin()(
-    //      subscribers(
-    //        eventProcessorBox(_, Iconic1)
-    //      ):_*)) |> borderInlineTop
-    //
-
-    //format match {
-    //  case Iconic1 =>
-    //    hjoin(sep=tbox("; "))(
-    //      valBox[String]("name"),
-    //      recordBox
-    //    )
-    //  case Description =>
-    //    modelDescription
-    //
-    //  case Summary =>
-    //    recordBox
-    //}
   }
 
 
@@ -369,74 +284,5 @@ trait Formatting extends Queries {
 
   def renderDbo(implicit dbo: MongoDBObject, fmt:Format): String = {
     render(mongoDboBox)
-  }
-
-  def mongoDboBox(implicit dbo: MongoDBObject, fmt:Format): Box = {
-    dbo.getAs[String]("type").getOrElse("?") match {
-      case "arXivDocument"
-         | "urlDocument"
-         | "plainTextDocument"
-         | "endorsement"            => docBox
-
-      case "statefulEventProcessor"
-         | "basicMailingList"
-         | "mutableMailingList"
-         | "anonymizer"             => eventProcessorBox
-
-      case "license"
-         | "request"
-         | "withdraw"
-         | "acknowledge"
-         | "decline"
-         | "fulfill"
-         | "carboncopy"
-         | "identityLicense"
-         | "forward"                => recordBox
-
-      case "linkedAccount"          => linkedAccountBox 
-      case "user"                   => userBox
-
-      case "userPassword"           => recordBox
-      case "token"                  => recordBox
-      case "ssToken"                => recordBox
-      case x                        => recordBox
-    }
-  }
-
-  def modelDescription(implicit dbo: MongoDBObject, fmt:Format): String = {
-    (dbo.getAs[String]("type").getOrElse("?") match {
-      case "arXivDocument"
-         | "urlDocument"
-         | "plainTextDocument"
-         | "endorsement"            => 
-        val m = CasbahDocumentStore.documentFromDbOpt(dbo)
-        m.map(_.title.map(quoted).getOrElse("")).getOrElse("")
-
-      case s
-          if s.endsWith("MailingList") || s.endsWith("EventProcessor") || s == "anonymizer" =>
-        val m = CasbahEventProcessorStore.eventProcessorFromDbOpt(dbo)
-        quoted(m.map(_.toString).getOrElse(""))
-
-      case "license"
-         | "request"
-         | "withdraw"
-         | "acknowledge"
-         | "decline"
-         | "fulfill"
-         | "carboncopy"
-         | "identityLicense"
-         | "forward"                =>
-        val m = CasbahEventStore.eventFromDbOpt(dbo)
-        m.map(t=>quoted(t.subject)).getOrElse("")
-
-      case "linkedAccount"          => "account"
-      case "user"                   => 
-        val m = CasbahUserStore.userFromDb(dbo)
-        m.fullname.getOrElse(m.username)
-      case "userPassword"           => "userpswd"
-      case "token"                  => "token"
-      case "ssToken"                => "sstoken"
-      case x                        => "<?>"
-    }).oneLine
   }
 }
